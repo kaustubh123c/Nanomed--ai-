@@ -1,0 +1,35 @@
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+pydantic==2.12.5
+pydantic-settings==2.3.4
+python-multipart==0.0.9
+motor==3.7.1
+pymongo>=4.9,<5.0
+python-dotenv==1.0.1
+numpy==1.26.4
+pandas==2.2.2
+scikit-learn==1.5.1
+xgboost==2.1.0
+joblib==1.4.2
+pypdf==4.3.1
+reportlab==4.2.2
+anthropic==0.34.0
+
+# --- Advanced Physics Engine (merged from Physics-AI) ---
+# Only required if MAC_DATA_SOURCE=xcom / data_source="xcom" is used.
+# The default "offline" data source needs neither.
+requests==2.32.3
+beautifulsoup4==4.12.3
+
+# --- AI Chatbot (merged from AI-Chatbot project) ---
+google-genai>=2.6.0,<2.17.0
+sentence-transformers==3.0.1
+langchain-community==0.2.11
+langchain-text-splitters==0.2.2
+
+# Google Identity Services ID-token verification
+google-auth>=2.35.0,<3.0.0
+

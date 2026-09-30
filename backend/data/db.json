@@ -1,0 +1,18 @@
+{
+  "users": [
+    {
+      "full_name": "Kaustubh mangesh kuberkar",
+      "email": "kaustubhkuberkar1@gmail.com",
+      "hashed_password": "$2b$12$QbDiL2qSZ.NODjhk/c/sV.Xve59XRt1HG0zPzWGZGPXPIBLGIktky",
+      "role": "researcher",
+      "organization": "deolite",
+      "_id": "cc846382-56bd-49c9-844d-2c0cfe533ffd"
+    }
+  ],
+  "materials": [],
+  "experiments": [],
+  "predictions": [],
+  "research_papers": [],
+  "reports": [],
+  "detector_readings": []
+}
