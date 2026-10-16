@@ -4,20 +4,23 @@ export default {
   theme: {
     extend: {
       colors: {
-        sage: { DEFAULT: "#6B705C", 50: "#F5F7F0", 100: "#EEF0E8", 200: "#DDE1D1", 300: "#C4CAB4", 400: "#AAB397", 500: "#87956E", 600: "#6B705C", 700: "#59604D", 800: "#454A3C" },
-        sage2: "#87956E",
-        olive: { DEFAULT: "#7A8062", 100: "#EEF0E4", 200: "#DDE1C8", 300: "#C2CBA9", 400: "#A8B58B", 500: "#8F9D70", 600: "#7A8062", 700: "#62674F" },
-        clay: { DEFAULT: "#A65D3A", 300: "#C78A6E", 500: "#A65D3A", 600: "#8D4E31" },
-        cream: "#F5F1E8",
-        ink: "#292A24", // primary - charcoal olive
-        ink2: "#3D4035", // lifted panel olive
-        beam: "#6B705C", // secondary - sage
-        signal: "#7A8B5B", // accent - moss
-        mist: "#F5F1E8", // background
-        warn: "#B46A3C",
-        violet: "#8A6A4A",
-        indigo: "#6B705C",
-        rose: "#9B4F45",
+        // "Clinical Teal" palette — deep navy-teal ink, teal primary, ribbon-pink oncology accent.
+        sage: { DEFAULT: "#2D7F8C", 50: "#F2F8F9", 100: "#E2F0F2", 200: "#CBDDE0", 300: "#A9D1D8", 400: "#7DB8C1", 500: "#4F9EAA", 600: "#2D7F8C", 700: "#246774", 800: "#1C505B" },
+        sage2: "#4F9EAA",
+        olive: { DEFAULT: "#0E7C86", 100: "#E3F5F6", 200: "#C5E6E8", 300: "#9DD3D7", 400: "#5FC0C4", 500: "#1BA5A8", 600: "#0E7C86", 700: "#0A626B" },
+        clay: { DEFAULT: "#E8833A", 300: "#F3B27A", 500: "#E8833A", 600: "#C96A24" },
+        aqua: { DEFAULT: "#22D3EE", 400: "#22D3EE", 500: "#06B6D4", 600: "#0891B2" },
+        cream: "#F2F7F8",
+        ink: "#0A1F2E",
+        ink2: "#12303F",
+        beam: "#0E7C86",
+        signal: "#0FA37F",
+        mist: "#F2F7F8",
+        warn: "#E8833A",
+        violet: "#1BA5A8",
+        indigo: "#2D7F8C",
+        rose: "#E5484D",
+        ribbon: { DEFAULT: "#D6336C", 50: "#FDF0F5", 100: "#FAD9E6", 300: "#F08AB0", 500: "#D6336C", 600: "#B82658" },
       },
       fontFamily: {
         display: ["Space Grotesk", "sans-serif"],
@@ -26,11 +29,11 @@ export default {
       },
       backgroundImage: {
         "grid-fade":
-          "linear-gradient(180deg, rgba(11,31,58,0.96) 0%, rgba(11,31,58,0.88) 100%)",
+          "linear-gradient(160deg, #0A1F2E 0%, #12303F 55%, #103B49 100%)",
       },
       boxShadow: {
         glass: "0 8px 32px rgba(0,0,0,0.25)",
-        glow: "0 0 24px rgba(0,194,255,0.35)",
+        glow: "0 0 28px rgba(27, 165, 168,0.45)",
       },
       keyframes: {
         beamPulse: {

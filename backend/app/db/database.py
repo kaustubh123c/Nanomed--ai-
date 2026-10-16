@@ -39,6 +39,7 @@ COLLECTIONS = [
     "studio_experiments",
     "material_comparisons",
     "visualization_presets",
+    "oncology_plans",
 ]
 
 
@@ -95,6 +96,11 @@ class JSONFileRepository:
                 return docs[i]
         return None
 
+    async def ping(self) -> dict:
+        # Local JSON storage is available when the file can be read.
+        self._read()
+        return {"connected": True, "engine": "json"}
+
     async def delete_one(self, collection: str, query: dict) -> bool:
         data = self._read()
         docs = data.get(collection, [])
@@ -131,6 +137,13 @@ class MongoRepository:
     async def update_one(self, collection: str, query: dict, update: dict) -> Optional[dict]:
         await self.db[collection].update_one(query, {"$set": update})
         return await self.find_one(collection, query)
+
+    async def ping(self) -> dict:
+        await self.client.admin.command("ping")
+        return {"connected": True, "engine": "mongodb", "database": self.db.name}
+
+    async def close(self) -> None:
+        self.client.close()
 
     async def delete_one(self, collection: str, query: dict) -> bool:
         result = await self.db[collection].delete_one(query)

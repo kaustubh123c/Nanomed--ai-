@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { UserPlus, AlertCircle } from "lucide-react";
 import AuthShell from "../components/AuthShell";
 import { useAuth } from "../context/AuthContext";
+import GoogleButton from "../components/GoogleButton";
 
 export default function Register() {
   const { register: registerUser } = useAuth();
@@ -50,53 +51,57 @@ export default function Register() {
         </>
       }
     >
+      <div className="mb-5 space-y-5">
+        <GoogleButton onError={setServerError} text="signup_with" />
+        <div className="flex items-center gap-3 text-xs text-ink/45"><span className="h-px flex-1 bg-white" /><span>OR</span><span className="h-px flex-1 bg-white" /></div>
+      </div>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         {serverError && (
-          <div className="flex items-center gap-2 text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3">
+          <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-500/30 rounded-lg px-4 py-3">
             <AlertCircle size={16} />
             {serverError}
           </div>
         )}
 
         <div>
-          <label className="block text-sm text-white/70 mb-1.5">Full name</label>
+          <label className="block text-sm text-ink/70 mb-1.5">Full name</label>
           <input
-            className="w-full rounded-xl bg-white/5 border border-white/15 px-4 py-3 text-sm outline-none focus:border-beam transition"
+            className="w-full rounded-xl bg-white border border-ink/10 px-4 py-3 text-sm outline-none focus:border-beam transition"
             placeholder="Dr. Asha Rao"
             {...register("full_name", { required: "Full name is required" })}
           />
           {errors.full_name && (
-            <p className="text-red-300 text-xs mt-1">{errors.full_name.message}</p>
+            <p className="text-red-600 text-xs mt-1">{errors.full_name.message}</p>
           )}
         </div>
 
         <div>
-          <label className="block text-sm text-white/70 mb-1.5">Email</label>
+          <label className="block text-sm text-ink/70 mb-1.5">Email</label>
           <input
             type="email"
-            className="w-full rounded-xl bg-white/5 border border-white/15 px-4 py-3 text-sm outline-none focus:border-beam transition"
+            className="w-full rounded-xl bg-white border border-ink/10 px-4 py-3 text-sm outline-none focus:border-beam transition"
             placeholder="you@institution.edu"
             {...register("email", { required: "Email is required" })}
           />
           {errors.email && (
-            <p className="text-red-300 text-xs mt-1">{errors.email.message}</p>
+            <p className="text-red-600 text-xs mt-1">{errors.email.message}</p>
           )}
         </div>
 
         <div>
-          <label className="block text-sm text-white/70 mb-1.5">Organization</label>
+          <label className="block text-sm text-ink/70 mb-1.5">Organization</label>
           <input
-            className="w-full rounded-xl bg-white/5 border border-white/15 px-4 py-3 text-sm outline-none focus:border-beam transition"
+            className="w-full rounded-xl bg-white border border-ink/10 px-4 py-3 text-sm outline-none focus:border-beam transition"
             placeholder="University / Lab name (optional)"
             {...register("organization")}
           />
         </div>
 
         <div>
-          <label className="block text-sm text-white/70 mb-1.5">Password</label>
+          <label className="block text-sm text-ink/70 mb-1.5">Password</label>
           <input
             type="password"
-            className="w-full rounded-xl bg-white/5 border border-white/15 px-4 py-3 text-sm outline-none focus:border-beam transition"
+            className="w-full rounded-xl bg-white border border-ink/10 px-4 py-3 text-sm outline-none focus:border-beam transition"
             placeholder="At least 8 characters"
             {...register("password", {
               required: "Password is required",
@@ -104,20 +109,20 @@ export default function Register() {
             })}
           />
           {errors.password && (
-            <p className="text-red-300 text-xs mt-1">{errors.password.message}</p>
+            <p className="text-red-600 text-xs mt-1">{errors.password.message}</p>
           )}
         </div>
 
         <div>
-          <label className="block text-sm text-white/70 mb-2">Account type</label>
+          <label className="block text-sm text-ink/70 mb-2">Account type</label>
           <div className="grid grid-cols-2 gap-3">
             {["researcher", "admin"].map((r) => (
               <label
                 key={r}
                 className={`cursor-pointer rounded-xl border px-4 py-3 text-sm text-center capitalize transition ${
                   role === r
-                    ? "border-beam bg-beam/10 text-white"
-                    : "border-white/15 text-white/60 hover:border-white/30"
+                    ? "border-beam bg-beam/10 text-ink"
+                    : "border-ink/10 text-ink/60 hover:border-ink/10"
                 }`}
               >
                 <input type="radio" value={r} className="hidden" {...register("role")} />

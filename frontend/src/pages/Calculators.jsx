@@ -130,7 +130,7 @@ export default function Calculators() {
                 <div
                   className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center border ${
                     isActive
-                      ? "bg-beam text-ink border-beam"
+                      ? "bg-beam text-white border-beam"
                       : "bg-white text-ink/40 border-ink/10"
                   }`}
                 >

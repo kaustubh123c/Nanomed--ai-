@@ -13,16 +13,16 @@ export default function BeamLab({ running, transmissionPercent = 100, thicknessC
   const survivingOpacity = Math.max(transmissionPercent / 100, 0.05);
 
   return (
-    <div className="relative rounded-2xl border border-white/10 bg-[radial-gradient(circle_at_20%_20%,rgba(0,194,255,0.08),transparent_60%)] p-6 h-[340px] overflow-hidden">
+    <div className="relative rounded-2xl border border-ink/10 bg-sage-50 bg-[radial-gradient(circle_at_20%_20%,rgba(0,194,255,0.08),transparent_60%)] p-6 h-[340px] overflow-hidden">
       {/* Bench line */}
-      <div className="absolute left-6 right-6 top-1/2 h-px bg-white/10" />
+      <div className="absolute left-6 right-6 top-1/2 h-px bg-sage-50" />
 
       {/* Gamma source */}
       <div className="absolute left-8 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2">
         <div className="w-14 h-14 rounded-full bg-warn/15 border-2 border-warn flex items-center justify-center animate-beamPulse">
           <Radiation className="text-warn" size={26} />
         </div>
-        <span className="text-[10px] font-mono uppercase text-white/40">Source</span>
+        <span className="text-[10px] font-mono uppercase text-ink/50">Source</span>
       </div>
 
       {/* Material block */}
@@ -44,7 +44,7 @@ export default function BeamLab({ running, transmissionPercent = 100, thicknessC
         >
           <span className="font-mono text-xs text-signal">{Math.round(transmissionPercent)}%</span>
         </div>
-        <span className="text-[10px] font-mono uppercase text-white/40">Detector</span>
+        <span className="text-[10px] font-mono uppercase text-ink/50">Detector</span>
       </div>
 
       {/* Traveling beam pulses (before material) */}
@@ -75,7 +75,7 @@ export default function BeamLab({ running, transmissionPercent = 100, thicknessC
           ))}
       </AnimatePresence>
 
-      <div className="absolute bottom-4 left-6 right-6 flex justify-between text-[10px] font-mono uppercase text-white/30">
+      <div className="absolute bottom-4 left-6 right-6 flex justify-between text-[10px] font-mono uppercase text-ink/45">
         <span>Gamma Source</span>
         <span>Attenuating Material</span>
         <span>Detector Array</span>

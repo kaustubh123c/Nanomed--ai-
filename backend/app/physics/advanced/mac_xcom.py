@@ -95,7 +95,9 @@ def get_xcom_components(element: str, energy_mev: float, atomic_number: int) -> 
     if not tables:
         raise RuntimeError("No data table found in XCOM response.")
 
-    target_energy = float(energy_mev)
+    # NIST XCOM receives energies formatted to four decimal places below.
+    # Compare against that same precision so valid custom energies such as 0.123456 MeV do not fail parsing.
+    target_energy = round(float(energy_mev), 4)
 
     for table in tables:
         for row in table.find_all("tr"):
@@ -183,7 +185,11 @@ def get_xcom_components_batch(
         if not tables:
             raise RuntimeError("No data table found in the NIST XCOM batch response.")
 
-        requested_lookup = {round(e, 4): e for e in uncached}
+        # NIST XCOM input is formatted to four decimals. Preserve every original
+        # requested value when multiple inputs map to the same XCOM energy.
+        requested_lookup: Dict[float, List[float]] = {}
+        for requested_energy in uncached:
+            requested_lookup.setdefault(round(requested_energy, 4), []).append(requested_energy)
 
         for table in tables:
             for row in table.find_all("tr"):
@@ -211,7 +217,8 @@ def get_xcom_components_batch(
                     }
                 except (ValueError, IndexError) as exc:
                     raise RuntimeError("Unable to parse NIST XCOM batch data.") from exc
-                _COMPONENT_CACHE[(element, round(requested_lookup[energy_key], 6))] = components
+                for requested_energy in requested_lookup[energy_key]:
+                    _COMPONENT_CACHE[(element, round(requested_energy, 6))] = components
 
         missing = [e for e in uncached if (element, round(e, 6)) not in _COMPONENT_CACHE]
         if missing:

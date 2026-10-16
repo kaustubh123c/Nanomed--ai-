@@ -10,7 +10,7 @@ from typing import Optional
 
 import requests
 
-from app.chatbot.config import MODEL_NAME, FALLBACK_MODEL_NAME
+from app.chatbot.config import MODEL_NAME, FALLBACK_MODELS
 from app.core.config import settings
 
 _client = None  # cached google-genai SDK client; reset by /chatbot/configure
@@ -58,6 +58,44 @@ def _local_answer(message: str) -> Optional[str]:
     return None
 
 
+_working_model: Optional[str] = None  # last model that answered successfully
+_discovered: Optional[list] = None    # cached ListModels result
+
+
+def _discover_models() -> list:
+    """Ask the API which models this key may call (generateContent), Flash
+    models first. Used only when every configured name returns 404."""
+    global _discovered
+    if _discovered is not None:
+        return _discovered
+    key = _get_api_key()
+    resp = requests.get(
+        "https://generativelanguage.googleapis.com/v1beta/models?pageSize=200",
+        headers={"x-goog-api-key": key},
+        timeout=20,
+    )
+    if resp.status_code >= 400:
+        raise RuntimeError(f"Gemini ListModels HTTP {resp.status_code}: {resp.text[:300]}")
+    names = []
+    for m in resp.json().get("models", []):
+        if "generateContent" not in m.get("supportedGenerationMethods", []):
+            continue
+        n = m.get("name", "").replace("models/", "")
+        low = n.lower()
+        if "flash" in low and not any(x in low for x in ("image", "tts", "live", "audio", "robotics", "computer", "embedding")):
+            names.append(n)
+    # stable names (no -preview/-exp) first, newest version first
+    names.sort(key=lambda n: (("preview" in n or "exp" in n), n), reverse=False)
+    names.sort(key=lambda n: n.split("-")[1] if n.startswith("gemini-") and len(n.split("-")) > 1 else "", reverse=True)
+    _discovered = names
+    return names
+
+
+def active_model() -> str:
+    """Model name for other modules (e.g. the function-calling agent)."""
+    return _working_model or MODEL_NAME
+
+
 def _request_model(model: str, message: str) -> str:
     key = _get_api_key()
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
@@ -88,20 +126,49 @@ def _is_retryable(exc: Exception) -> bool:
 
 
 def ask_gemini(message: str) -> str:
+    global _working_model
     local = _local_answer(message)
     if local is not None:
         return local
 
     last_error: Optional[Exception] = None
-    for model in (MODEL_NAME, FALLBACK_MODEL_NAME):
-        for attempt in range(2):
-            try:
-                return _request_model(model, message)
-            except Exception as exc:
-                last_error = exc
-                if not _is_retryable(exc) or attempt == 1:
-                    break
-                time.sleep(1.0)
+    chain = []
+    for m in [_working_model, MODEL_NAME, *FALLBACK_MODELS]:
+        if m and m not in chain:
+            chain.append(m)
+
+    def _try(models):
+        global _working_model
+        nonlocal last_error
+        saw_404 = False
+        for model in models:
+            for attempt in range(2):
+                try:
+                    out = _request_model(model, message)
+                    _working_model = model
+                    return out, saw_404
+                except Exception as exc:
+                    last_error = exc
+                    if "HTTP 404" in str(exc) or "NOT_FOUND" in str(exc):
+                        saw_404 = True
+                        break  # model name not available to this key
+                    if not _is_retryable(exc) or attempt == 1:
+                        break
+                    time.sleep(1.0)
+        return None, saw_404
+
+    out, saw_404 = _try(chain)
+    if out is not None:
+        return out
+    if saw_404:
+        # Configured names are unavailable (retired/renamed): discover a live one.
+        try:
+            extra = [m for m in _discover_models() if m not in chain][:4]
+            out, _ = _try(extra)
+            if out is not None:
+                return out
+        except Exception as exc:
+            last_error = exc
 
     # Keep the UI friendly, but give the local developer enough information to
     # diagnose configuration/network problems in the terminal.
@@ -112,6 +179,8 @@ def ask_gemini(message: str) -> str:
             return "Gemini rejected the API key or its permissions. Create a new Gemini API key in Google AI Studio and replace GEMINI_API_KEY in backend/.env."
         if "429" in text or "resource exhausted" in text or "high demand" in text:
             return "Gemini is temporarily busy or rate-limited. Please try again in a moment."
+        if "404" in text or "not_found" in text:
+            return "None of the configured Gemini models are available for this key. Set GEMINI_MODEL in backend/.env to a current model (for example gemini-3.5-flash) and restart the backend."
         if "timeout" in text or "connection" in text or "name or service" in text:
             return "NanoMed could not connect to Gemini. Check your internet connection and firewall, then try again."
     return "I couldn't reach Gemini right now. Please check the backend terminal for the Gemini error and try again."

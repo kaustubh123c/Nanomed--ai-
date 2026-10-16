@@ -55,7 +55,7 @@ export default function Planner() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-5">
         {/* Input panel */}
-        <div className="glass-panel bg-ink p-6 space-y-6 rounded-2xl h-fit">
+        <div className="nm-card p-6 space-y-6 rounded-2xl h-fit">
           <p className="label-eyebrow">Design Target</p>
 
           <Slider label="Gamma Energy" value={energy} min={20} max={1300} unit=" keV" onChange={setEnergy} />

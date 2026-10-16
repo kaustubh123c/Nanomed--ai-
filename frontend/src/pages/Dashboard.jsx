@@ -4,7 +4,7 @@ import {
   Activity, ArrowRight, Atom, BarChart3, Beaker, Bell, BrainCircuit,
   Calculator, Clock3, FileBarChart, FileSearch, FlaskConical, Gauge,
   Layers3, Plus, Search, Sparkles, Star, TrendingUp, Zap, GitCompare, FileText, SlidersHorizontal,
-  ClipboardCheck, Target, UploadCloud, BookOpen, ShieldCheck, CalendarDays, Download, RotateCcw,
+  ClipboardCheck, Target, Ribbon, Crosshair, UploadCloud, BookOpen, ShieldCheck, CalendarDays, Download, RotateCcw,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../lib/api";
@@ -56,10 +56,10 @@ export default function Dashboard() {
         <div className="absolute right-40 -bottom-40 w-96 h-96 rounded-full bg-signal/10 blur-3xl" />
         <div className="relative z-10 grid lg:grid-cols-[1fr_360px] gap-8 items-center">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 text-xs text-white/70 mb-5"><Sparkles size={13} className="text-beam"/> Research workspace</div>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 text-xs text-white/70 mb-5"><Sparkles size={13} className="text-beam"/> Cancer research workspace</div>
             <p className="text-white/50 text-sm">Good to see you,</p>
             <h1 className="font-display text-3xl sm:text-4xl font-semibold mt-1 tracking-tight">{firstName}.</h1>
-            <p className="text-white/60 text-sm sm:text-base mt-3 max-w-xl leading-relaxed">A focused workspace for radiation simulations, material intelligence, experiments and research reporting.</p>
+            <p className="text-white/60 text-sm sm:text-base mt-3 max-w-xl leading-relaxed">A focused workspace for cancer radiotherapy research: nanoparticle dose enhancement, radiation simulations, material intelligence and reporting.</p>
             <div className="flex flex-wrap gap-3 mt-6">
               <button onClick={() => navigate("/dashboard/calculators")} className="btn-primary"><Zap size={17}/> Run calculation <ArrowRight size={15}/></button>
               <button onClick={() => navigate("/dashboard/materials")} className="px-4 py-3 rounded-xl bg-white/10 border border-white/15 text-sm font-semibold hover:bg-white/15 transition flex items-center gap-2"><Plus size={16}/> Add material</button>
@@ -73,6 +73,20 @@ export default function Dashboard() {
           </div>
         </div>
       </motion.section>
+
+      <section className="nm-onco-hero relative overflow-hidden rounded-3xl p-6 text-white sm:p-7">
+        <div className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="max-w-xl">
+            <span className="nm-ribbon-chip"><Ribbon size={13}/> Oncology</span>
+            <h2 className="mt-3 font-display text-2xl font-semibold tracking-tight">Cancer radiotherapy toolkit</h2>
+            <p className="mt-1.5 text-sm text-white/65">Browse tumour sites, model gold / gadolinium / hafnium dose enhancement and compare fractionation schemes.</p>
+          </div>
+          <div className="flex flex-wrap gap-2.5">
+            <button onClick={()=>navigate("/dashboard/oncology")} className="btn-primary"><Ribbon size={16}/> Cancer Hub</button>
+            <button onClick={()=>navigate("/dashboard/oncology/dose-lab")} className="btn-ghost"><Crosshair size={16}/> Tumor Dose Lab</button>
+          </div>
+        </div>
+      </section>
 
       <section className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
         {statConfig.map(({key,label,icon:Icon},i)=><motion.div key={key} initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} transition={{delay:i*.04}} className="glass-panel-light p-4 sm:p-5 rounded-2xl"><div className="flex items-center justify-between"><div className="w-9 h-9 rounded-xl bg-beam/10 border border-beam/20 flex items-center justify-center"><Icon size={17} className="text-beam"/></div><Activity size={14} className="text-ink/20"/></div><p className="font-display text-2xl font-semibold text-ink mt-4">{summary?.cards?.[key] ?? "—"}</p><p className="text-xs text-ink/45 mt-0.5">{label}</p></motion.div>)}

@@ -25,6 +25,7 @@ Flow for every incoming message:
 """
 from __future__ import annotations
 
+import asyncio
 import re
 from typing import Optional
 
@@ -67,7 +68,7 @@ def _try_gemini_tool_call(message: str) -> Optional[dict]:
         from google.genai import types
 
         from app.chatbot.ai.llm import _get_client
-        from app.chatbot.config import MODEL_NAME
+        from app.chatbot.ai.llm import active_model
     except Exception:
         return None
 
@@ -95,7 +96,7 @@ def _try_gemini_tool_call(message: str) -> Optional[dict]:
     )
 
     try:
-        response = client.models.generate_content(model=MODEL_NAME, contents=message, config=config)
+        response = client.models.generate_content(model=active_model(), contents=message, config=config)
     except Exception:
         return None
 
@@ -154,7 +155,7 @@ async def handle(message: str, user: Optional[UserOut], user_key: str) -> Option
     if not action_cue:
         return None
 
-    call = _try_gemini_tool_call(message) or fallback_parser.parse_command(message)
+    call = await asyncio.to_thread(_try_gemini_tool_call, message) or fallback_parser.parse_command(message)
     if call is None:
         return None
 

@@ -11,6 +11,8 @@ from app.models.user import UserOut
 from app.physics.advanced import service
 from app.physics.advanced.components import VALID_SOURCES
 from app.physics.advanced.energy_grid import get_selected_energy_grid
+from app.physics.advanced.elements import get_atomic_number
+from app.physics.advanced import mac_xcom
 
 router = APIRouter(prefix="/api/calculators/advanced", tags=["Advanced Physics"])
 
@@ -148,6 +150,26 @@ async def calculate_multi_material_sweep(
 ):
     source = _resolve_source(payload.data_source)
     fractions = {item.element: item.weight_fraction / 100.0 for item in payload.elements}
+
+    # For live NIST XCOM, prefetch energies in batches (XCOM accepts at most
+    # 100 energies per request). Without this, every energy level triggers
+    # repeated network calls and the multi-energy model appears to hang.
+    if source == "xcom":
+        atomic_numbers = {symbol: get_atomic_number(symbol) for symbol in fractions}
+        try:
+            for start in range(0, len(payload.energies_MeV), 100):
+                mac_xcom.warm_cache(
+                    list(fractions), payload.energies_MeV[start:start + 100], atomic_numbers
+                )
+        except (ValueError, KeyError, RuntimeError) as exc:
+            # Keep per-energy error reporting below; this message is returned
+            # as unavailable rows rather than failing the entire request.
+            xcom_prefetch_error = str(exc)
+        else:
+            xcom_prefetch_error = None
+    else:
+        xcom_prefetch_error = None
+
     results = []
     for index, energy in enumerate(payload.energies_MeV, start=1):
         try:
@@ -176,7 +198,10 @@ async def calculate_multi_material_sweep(
                 "mass_fractions": calc.get("mass_fractions"),
             })
         except (ValueError, KeyError, LookupError, ZeroDivisionError, RuntimeError) as exc:
-            results.append({"index": index, "energy_MeV": energy, "status": "unavailable", "error": str(exc)})
+            message = str(exc)
+            if xcom_prefetch_error and source == "xcom":
+                message = f"NIST XCOM lookup issue: {xcom_prefetch_error}. {message}"
+            results.append({"index": index, "energy_MeV": energy, "status": "unavailable", "error": message})
 
     calculated = sum(1 for item in results if item["status"] == "calculated")
     return {

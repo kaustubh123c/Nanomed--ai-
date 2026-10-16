@@ -10,6 +10,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
 
     <style>
         :root {
@@ -757,6 +760,13 @@
                             <label for="cmp-thickness">Thickness <span class="unit">(cm)</span></label>
                             <input id="cmp-thickness" type="number" step="0.01" min="0" placeholder="1">
                         </div>
+                        <div class="field">
+                            <label for="cmp-source">Attenuation data source</label>
+                            <select id="cmp-source">
+                                <option value="xcom">NIST XCOM (online reference)</option>
+                                <option value="offline">Offline estimate (no internet lookup)</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div style="display:flex; gap:10px; margin-top:18px; flex-wrap:wrap">
@@ -857,6 +867,35 @@
 
     <!-- ================= JAVASCRIPT ================= -->
     <!-- Backend contract unchanged: POST /api/chatbot/chat {question} -> {question, answer} -->
+    <script>
+    // Resolve the backend URL from the React parent (VITE_API_URL).
+    // Local development can leave VITE_API_URL blank and use Vite's /api proxy.
+    const NANOMED_API_BASE = (function () {
+        try { return String(window.parent.__NANOMED_API_URL__ || "").replace(/\/$/, ""); }
+        catch (_) { return ""; }
+    })();
+    function nanomedApiUrl(path) { return NANOMED_API_BASE + path; }
+
+    // Forward the platform login token so the assistant knows who is signed in.
+    (function () {
+        const origFetch = window.fetch.bind(window);
+        window.fetch = function (input, init) {
+            init = init ? Object.assign({}, init) : {};
+            try {
+                const token = window.parent && window.parent.localStorage
+                    ? window.parent.localStorage.getItem("nanomed_token")
+                    : localStorage.getItem("nanomed_token");
+                if (token) {
+                    const headers = new Headers(init.headers || (input && input.headers) || {});
+                    if (!headers.has("Authorization")) headers.set("Authorization", "Bearer " + token);
+                    init.headers = headers;
+                }
+            } catch (e) { /* no token available: continue anonymously */ }
+            if (!init.credentials) init.credentials = "same-origin";
+            return origFetch(input, init);
+        };
+    })();
+    </script>
     <script>
         // ---------- element refs ----------
         const questionInput = document.getElementById("question");
@@ -1021,6 +1060,25 @@
                 if (!line.trim()) { closeList(); index++; continue; }
                 closeList();
                 const p = document.createElement("p"); appendInlineText(p, line); content.appendChild(p); index++;
+            }
+            // Render valid LaTeX/Math expressions (chemical formulas, units, equations)
+            // after creating text nodes. KaTeX renders text safely without interpreting it as HTML.
+            if (typeof window.renderMathInElement === "function") {
+                try {
+                    window.renderMathInElement(content, {
+                        delimiters: [
+                            { left: "$$", right: "$$", display: true },
+                            { left: "\\[", right: "\\]", display: true },
+                            { left: "\\(", right: "\\)", display: false },
+                            { left: "$", right: "$", display: false }
+                        ],
+                        throwOnError: false,
+                        strict: "ignore",
+                        ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"]
+                    });
+                } catch (error) {
+                    console.warn("Math formatting could not be applied:", error);
+                }
             }
             return content;
         }
@@ -1201,13 +1259,15 @@
 
         // ================= BACKEND CALL =================
         async function postChat(message) {
-            const response = await fetch("/api/chatbot/chat", {
+            const response = await fetch(nanomedApiUrl("/api/chatbot/chat"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
+                credentials: "same-origin",
                 body: JSON.stringify({ question: message })
             });
-            const data = await response.json();
-            if (!response.ok && !data.answer) throw new Error(data.error || data.detail || "Request failed");
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.error || data.detail || `Chat request failed (${response.status})`);
+            if (!data.answer) throw new Error(data.error || "The chatbot returned an empty answer.");
             return data;
         }
 
@@ -1258,8 +1318,11 @@
         function quickAsk(q) { gotoView("assistant"); questionInput.value = q; sendQuestion(); }
 
         async function newChat() {
-            await fetch("/api/chatbot/chat", { method: "DELETE" });
-            location.reload();
+            try {
+                await fetch(nanomedApiUrl("/api/chatbot/chat"), { method: "DELETE", credentials: "same-origin" });
+            } finally {
+                location.reload();
+            }
         }
 
         function exportTranscript() {
@@ -1273,7 +1336,7 @@
 
         async function restoreHistory() {
             try {
-                const response = await fetch("/api/chatbot/history");
+                const response = await fetch(nanomedApiUrl("/api/chatbot/history"));
                 const data = await response.json();
                 if (!data.messages?.length) return;
                 welcome?.remove();
@@ -1285,11 +1348,25 @@
             const healthPill = document.getElementById("sys-health");
             const serviceVal = document.getElementById("kpi-service");
             try {
-                const response = await fetch("/api/health", { cache: "no-store" });
-                if (!response.ok) throw new Error("unavailable");
-                status.classList.remove("offline"); statusText.textContent = "Online";
-                healthPill.textContent = "ok"; healthPill.className = "pill ok";
-                serviceVal.textContent = "Online"; serviceVal.style.color = "var(--accent)";
+                const response = await fetch(nanomedApiUrl("/api/health"), { cache: "no-store" });
+                if (!response.ok) throw new Error("Backend unavailable");
+                let aiConfigured = false;
+                try {
+                    const aiResponse = await fetch(nanomedApiUrl("/api/chatbot/status"), { cache: "no-store" });
+                    if (aiResponse.ok) {
+                        const aiStatus = await aiResponse.json();
+                        aiConfigured = Boolean(aiStatus.configured);
+                    }
+                } catch (_) {}
+                if (aiConfigured) {
+                    status.classList.remove("offline"); statusText.textContent = "Backend + AI ready";
+                    healthPill.textContent = "ready"; healthPill.className = "pill ok";
+                    serviceVal.textContent = "AI ready"; serviceVal.style.color = "var(--accent)";
+                } else {
+                    status.classList.add("offline"); statusText.textContent = "Backend online · AI key missing";
+                    healthPill.textContent = "key needed"; healthPill.className = "pill warn";
+                    serviceVal.textContent = "Add Gemini key"; serviceVal.style.color = "var(--warn)";
+                }
             } catch {
                 status.classList.add("offline"); statusText.textContent = "Offline";
                 healthPill.textContent = "down"; healthPill.className = "pill warn";
@@ -1320,7 +1397,7 @@
 
         async function refreshPdfStatus() {
             try {
-                const response = await fetch("/api/chatbot/pdf-status", { cache: "no-store" });
+                const response = await fetch(nanomedApiUrl("/api/chatbot/pdf-status"), { cache: "no-store" });
                 const data = await response.json();
                 renderPdfStatus(data.uploaded ? data.filename : null);
             } catch (error) { console.warn("Unable to read upload status.", error); }
@@ -1339,7 +1416,7 @@
             if (hint) hint.textContent = "Uploading & indexing…";
             const formData = new FormData(); formData.append("file", file);
             try {
-                const response = await fetch("/api/chatbot/upload-pdf", { method: "POST", body: formData });
+                const response = await fetch(nanomedApiUrl("/api/chatbot/upload-pdf"), { method: "POST", body: formData });
                 const data = await response.json();
                 if (response.ok && data.ok) {
                     renderPdfStatus(data.filename);
@@ -1358,7 +1435,7 @@
         }
 
         async function removePdf() {
-            try { await fetch("/api/chatbot/pdf", { method: "DELETE" }); }
+            try { await fetch(nanomedApiUrl("/api/chatbot/pdf"), { method: "DELETE" }); }
             catch (error) { console.warn("Unable to remove the uploaded PDF.", error); }
             renderPdfStatus(null);
             showToast("Uploaded PDF removed from this session.", "ok");
@@ -1473,43 +1550,94 @@
             addMaterialRow("Fe3O4", "5.2"); addMaterialRow("Pb", "11.34"); addMaterialRow("Al", "2.70");
             document.getElementById("cmp-energy").value = "0.662";
             document.getElementById("cmp-thickness").value = "1";
+            document.getElementById("cmp-source").value = "offline";
         }
 
         async function runComparison() {
             const host = document.getElementById("cmp-result");
             const btn = document.getElementById("cmp-run");
             const rows = [...document.querySelectorAll("#mat-rows .mat-row")];
-            const mats = rows
-                .map(r => ({ f: r.querySelector(".m-formula").value.trim(), d: r.querySelector(".m-density").value.trim() }))
-                .filter(m => m.f && m.d);
-            const energy = document.getElementById("cmp-energy").value.trim();
-            const thickness = document.getElementById("cmp-thickness").value.trim();
-            if (mats.length < 2 || !energy || !thickness) {
-                host.innerHTML = '<div class="placeholder">Add at least two materials (formula + density), an energy and a thickness.</div>';
+            const materials = rows
+                .map(r => ({
+                    formula: r.querySelector(".m-formula").value.trim(),
+                    density_g_cm3: Number(r.querySelector(".m-density").value)
+                }))
+                .filter(m => m.formula && Number.isFinite(m.density_g_cm3) && m.density_g_cm3 > 0);
+            const energy = Number(document.getElementById("cmp-energy").value);
+            const thickness = Number(document.getElementById("cmp-thickness").value);
+
+            if (materials.length < 2 || !Number.isFinite(energy) || energy <= 0 ||
+                !Number.isFinite(thickness) || thickness < 0) {
+                host.innerHTML = '<div class="placeholder">Enter at least two materials with valid densities, a positive photon energy, and a non-negative thickness.</div>';
                 return;
             }
-            const list = mats.map(m => `${m.f} density ${m.d} g/cm3`).join(", ");
-            const message = `Compare ${list} at ${energy} MeV and thickness ${thickness} cm.`;
-            btn.disabled = true; resultLoading(host, "Comparing materials via Physics-AI…");
+
+            btn.disabled = true;
+            resultLoading(host, "Calculating material comparison with the physics engine…");
             try {
-                const data = await postChat(message);
-                data._question = message;
-                if (data.answer) { renderResultInto(host, data); recordStats(data); }
-                else host.innerHTML = '<div class="placeholder">' + (data.error || "No result returned.") + '</div>';
+                const response = await fetch(nanomedApiUrl("/api/chatbot/compare-materials"), {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        materials,
+                        energy_MeV: energy,
+                        thickness_cm: thickness,
+                        data_source: document.getElementById("cmp-source").value
+                    })
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.detail || data.error || "Comparison request failed.");
+
+                host.innerHTML = "";
+                const summary = document.createElement("div");
+                summary.className = "result-body";
+                summary.innerHTML = `<p><strong>Material comparison</strong> · ${Number(data.energy_MeV).toFixed(3)} MeV · ${Number(data.thickness_cm).toFixed(3)} cm</p>
+                    <p style="color:var(--text-dim);margin:6px 0 14px">Sorted by calculated radiation shielding efficiency (RSE), highest first. This is a screening comparison, not a clinical or engineering approval.</p>`;
+                host.appendChild(summary);
+
+                const wrapper = document.createElement("div");
+                wrapper.className = "table-wrapper";
+                const table = document.createElement("table");
+                table.innerHTML = '<thead><tr><th>Rank</th><th>Material</th><th>Density (g/cm³)</th><th>MAC (cm²/g)</th><th>LAC (cm⁻¹)</th><th>HVL (cm)</th><th>MFP (cm)</th><th>RSE (%)</th><th>Status</th></tr></thead>';
+                const tbody = document.createElement("tbody");
+                (data.results || []).forEach((r, idx) => {
+                    const tr = document.createElement("tr");
+                    const vals = [
+                        r.rse_percent == null ? "—" : String(idx + 1),
+                        r.formula || "—",
+                        r.density_g_cm3 == null ? "—" : Number(r.density_g_cm3).toFixed(3),
+                        r.mac_cm2_g == null ? "—" : Number(r.mac_cm2_g).toFixed(5),
+                        r.lac_cm1 == null ? "—" : Number(r.lac_cm1).toFixed(5),
+                        r.hvl_cm == null ? "—" : Number(r.hvl_cm).toFixed(5),
+                        r.mfp_cm == null ? "—" : Number(r.mfp_cm).toFixed(5),
+                        r.rse_percent == null ? "—" : Number(r.rse_percent).toFixed(2),
+                        r.status === "unavailable" ? (r.error || "Unavailable") : (r.status || "Calculated")
+                    ];
+                    vals.forEach(value => {
+                        const td = document.createElement("td");
+                        td.textContent = value;
+                        tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                });
+                table.appendChild(tbody); wrapper.appendChild(table); host.appendChild(wrapper);
+
+                const note = document.createElement("p");
+                note.className = "message-meta";
+                note.style.marginTop = "12px";
+                note.textContent = data.note || "Results depend on the selected data source and model assumptions.";
+                host.appendChild(note);
+                showToast("Material comparison completed.", "ok");
             } catch (e) {
-                host.innerHTML = '<div class="placeholder">' + (e.message || "Comparison failed.") + '</div>';
-                showToast(e.message || "Comparison failed.", "error");
-            } finally { btn.disabled = false; }
-        }
-
-        // ================= ATTENUATION EXPLORER =================
-        let explorerChart = null;
-
-        function fillExpExample() {
-            document.getElementById("exp-formula").value = "Pb";
-            document.getElementById("exp-density").value = "11.34";
-            document.getElementById("exp-energy").value = "0.662";
-            document.getElementById("exp-range").value = "";
+                host.innerHTML = "";
+                const err = document.createElement("div");
+                err.className = "placeholder";
+                err.textContent = e.message || "Material comparison failed.";
+                host.appendChild(err);
+                showToast(err.textContent, "error");
+            } finally {
+                btn.disabled = false;
+            }
         }
 
         function metricCard(label, value, unit, hl) {

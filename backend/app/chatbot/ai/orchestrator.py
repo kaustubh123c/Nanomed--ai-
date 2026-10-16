@@ -7,15 +7,21 @@ from app.chatbot.ai.memory import ANONYMOUS_KEY, save_message, get_history
 from app.chatbot.ai.response import format_response
 from app.chatbot.ai.knowledge import local_answer
 from app.models.user import UserOut
-from app.chatbot.tools.rag.user_pdf_store import has_pdf, pdf_name, delete_pdf, is_active, set_active
-from app.chatbot.tools.rag.user_pdf_rag import user_pdf_chat
 
 
-async def process_message(message: str, user: Optional[UserOut] = None, user_key: Optional[str] = None) -> str:
-    # Logged-in users use their account id; anonymous browsers use the
-    # browser session key so chat history and uploaded PDFs stay isolated.
-    user_key = user.id if user is not None else (user_key or ANONYMOUS_KEY)
+async def process_message(
+    message: str,
+    user: Optional[UserOut] = None,
+    user_key: Optional[str] = None,
+) -> str:
+    user_key = user_key or (str(user.id) if user is not None else ANONYMOUS_KEY)
 
+    # Capture previous turns before saving the current question so follow-ups
+    # have context without duplicating the current message.
+    previous = get_history(user_key)[-10:]
+    conversation_context = "\n".join(
+        f"{item['role']}: {item['message']}" for item in previous
+    )
     # Save user message
     save_message(user_key, "User", message)
 
@@ -25,7 +31,15 @@ async def process_message(message: str, user: Optional[UserOut] = None, user_key
     # If a PDF is active, use it when the query has a relevant match. This
     # keeps uploaded-paper answers grounded in the document while allowing
     # ordinary NanoMed questions to continue through the existing assistant.
-    if has_pdf(user_key):
+    # RAG dependencies (sentence-transformers, langchain) are heavy; import them
+    # lazily so a missing/failed install never takes the whole chatbot down.
+    try:
+        from app.chatbot.tools.rag.user_pdf_store import has_pdf, set_active
+        from app.chatbot.tools.rag.user_pdf_rag import user_pdf_chat
+    except Exception:
+        has_pdf = None
+
+    if has_pdf is not None and has_pdf(user_key):
         try:
             pdf_answer, pdf_sources = user_pdf_chat(
                 user_key,
@@ -67,6 +81,8 @@ You are NanoMed, a friendly AI assistant.
 The user is greeting you.
 
 Respond naturally and briefly.
+Recent conversation:
+{conversation_context or "(none)"}
 
 User:
 {message}
@@ -92,6 +108,9 @@ clearly. Do not ask the user to provide the material name when it is already
 present in the question. Do not create or register a material unless the user
 explicitly asks you to.
 
+Recent conversation:
+{conversation_context or "(none)"}
+
 User question:
 {message}
 
@@ -106,12 +125,16 @@ Answer in a concise, useful format with units where appropriate.
 You are NanoMed, an AI assistant.
 
 Have a natural conversation with the user.
+Use recent conversation context to understand follow-up questions.
 
 If the user asks a normal/general question,
 answer helpfully using your general knowledge.
 
 Do not say that information must come from
 a knowledge base.
+
+Recent conversation:
+{conversation_context or "(none)"}
 
 User:
 {message}

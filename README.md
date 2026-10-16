@@ -1,3 +1,6 @@
+
+> **Gemini chatbot setup:** follow [`GEMINI_CHATBOT_SETUP.md`](GEMINI_CHATBOT_SETUP.md). Keep `GEMINI_API_KEY` in `backend/.env` or backend-host environment variables only.
+
 # NanoMed-AI — Full Stack
 
 This package combines the current NanoMed frontend (including the 8-material manual comparison UI) with the original FastAPI backend that provides authentication, MongoDB integration, research/physics APIs, and the Gemini chatbot.
@@ -21,7 +24,7 @@ venv\Scripts\activate
 python -m pip install -r requirements.txt
 ```
 
-Create `backend/.env` from `backend/.env.example` and set at least `MONGODB_URI` and `JWT_SECRET`. Add `GEMINI_API_KEY` for the chatbot and `GOOGLE_CLIENT_ID` for Google sign-in.
+Create `backend/.env` from `backend/.env.example`. Set `MONGO_URI` to your rotated Atlas connection string and generate a strong `JWT_SECRET_KEY`. Add `GEMINI_API_KEY` for the chatbot and `GOOGLE_CLIENT_ID` for Google sign-in. Never commit `.env` files.
 
 Start:
 
@@ -44,7 +47,23 @@ npm run dev
 
 Frontend: http://localhost:5173
 
-The Vite proxy forwards `/api` requests to `http://127.0.0.1:8000`.
+The Vite proxy forwards `/api` requests to `http://127.0.0.1:8000`. The database connection check is `http://127.0.0.1:8000/api/health/database`.
+
+## Oncology module (cancer department)
+
+New sidebar section **Oncology**:
+
+- **Cancer Hub** - 10 tumour sites with typical regimens, modalities, alpha/beta and nanoparticle strategies
+- **Tumor Dose Lab** - nanoparticle dose-enhancement factor (NIST mass-energy-absorption data), BED / EQD2 and beam attenuation, with saved scenarios
+- **Radiosensitizers** - reference guide to Au, Gd, Hf, Pt, Bi, Ag, I, Fe and radiotherapy modalities
+
+API: `GET /api/oncology/cancer-types`, `GET /api/oncology/nanoparticles`, `POST /api/oncology/dose-enhancement`, `GET|DELETE /api/oncology/plans`.
+Research/education use only - not a clinical planning system.
+
+## Google sign-in
+
+Client ID is preconfigured in `frontend/.env` (`VITE_GOOGLE_CLIENT_ID`) and `backend/.env` (`GOOGLE_CLIENT_ID`).
+In Google Cloud Console -> Credentials -> this OAuth client, add every origin you use (e.g. `http://localhost:5173`, and your deployed domain) under **Authorized JavaScript origins**.
 
 ## Authentication
 
@@ -86,3 +105,11 @@ The NanoMed AI Assistant now includes the uploaded research-paper chatbot workfl
 - `GET /api/chatbot/status`
 
 For production, configure `GEMINI_API_KEY`, `MONGO_URI`, `JWT_SECRET_KEY`, and `CORS_ORIGINS` in the backend host environment. Do not commit `.env` or API keys.
+
+
+## Deployment files and checks
+- `backend/Dockerfile` and `render.yaml` provide a Render backend deployment starting point.
+- `frontend/vercel.json` provides SPA rewrites for Vercel. Set `VITE_API_URL` to the deployed backend URL ending in `/api`.
+- `DEPLOYMENT_CHECKLIST.md` contains Atlas setup, deployment variables, and smoke-test instructions.
+- `RUN-BACKEND.ps1` and `RUN-FRONTEND.ps1` are Windows PowerShell launch helpers.
+- Offline repository CRUD smoke test: from `backend`, run `python -m unittest discover -s tests -v` (ensure `MONGO_URI` is blank in the shell for this isolated test).

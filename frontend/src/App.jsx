@@ -15,6 +15,9 @@ import Settings from "./pages/Settings";
 import Admin from "./pages/Admin";
 import ResearchWorkspace from "./pages/ResearchWorkspace";
 import ResearchStudio from "./pages/ResearchStudio";
+import OncologyHub from "./pages/oncology/OncologyHub";
+import TumorDoseLab from "./pages/oncology/TumorDoseLab";
+import Radiosensitizers from "./pages/oncology/Radiosensitizers";
 import CalculationHistory from "./pages/CalculationHistory";
 import DashboardLayout from "./layouts/DashboardLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -40,6 +43,9 @@ export default function App() {
         }
       >
         <Route index element={<Dashboard />} />
+        <Route path="oncology" element={<OncologyHub />} />
+        <Route path="oncology/dose-lab" element={<TumorDoseLab />} />
+        <Route path="oncology/radiosensitizers" element={<Radiosensitizers />} />
         <Route path="workspace" element={<ResearchWorkspace />} />
         <Route path="research-studio" element={<ResearchStudio />} />
         <Route path="calculation-history" element={<CalculationHistory />} />
