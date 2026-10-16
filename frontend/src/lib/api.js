@@ -1,8 +1,7 @@
-
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://nanomed-ai-sb9d.onrender.com/api",
+  baseURL: "https://radshield-ai-api-production.up.railway.app/api",
   withCredentials: true,
 });
 
